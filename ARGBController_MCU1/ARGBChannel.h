@@ -107,6 +107,10 @@ public:
 		delay(25);
 	}
 
+  uint8_t getARGBMode() {
+    return ARGBMode;
+  }
+
 	void runARGBMode() {
 		unsigned long pixelTime = millis();
 		

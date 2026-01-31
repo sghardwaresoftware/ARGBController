@@ -1,5 +1,5 @@
-#include "./Include/ARGBChannel.h"
-#include "./Include/ARGBControllerMem.h"
+#include "./ARGBChannel.h"
+#include "./ARGBControllerMem.h"
 
 #define numberOfChannels 8
 #define ARGBLedCount 15
@@ -14,6 +14,7 @@
 #define ARGBChannel7_pin 8
 #define ARGBChannel8_pin 9
 
+#define channelModeChangeFlag_pin 13
 #define channelVal_bit2_pin   A0
 #define channelVal_bit1_pin   A1
 #define channelVal_bit0_pin   A2
@@ -34,7 +35,7 @@ ARGBChannel channel8(ARGBChannel8_pin, ARGBLedCount);
 ARGBControllerMem ARGBMemory;
 
 uint8_t currentChannel;
-uint8_t prevModeVal;
+uint8_t currentMode;
 
 void initARGBChannels() {
   //initalize the argb channel with the initialized mode, color index and pixel interval 
@@ -53,76 +54,82 @@ void initARGBChannels() {
 }
 
 void changeARGBMode(uint8_t modeVal) { 
-  //changing mode triggered from button/IR receiver event; can change value by either method, cyclingValue or assigning value
-  //refer to ARGBChannel.h updateValueMethods and cycleValueDirection enum for parameters' reference
-  
   switch (currentChannel) {
     case 1:
-      channel1.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(0, modeVal);
-      break;
+      channel1.updateARGBMode(modeVal); ARGBMemory.updateMemory(0, modeVal); break;
     case 2:
-      channel2.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(1, modeVal);
-      break;
+      channel2.updateARGBMode(modeVal); ARGBMemory.updateMemory(1, modeVal); break;
     case 3:
-      channel3.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(2, modeVal);
-      break;
+      channel3.updateARGBMode(modeVal); ARGBMemory.updateMemory(2, modeVal); break;
     case 4:
-      channel4.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(3, modeVal);
-      break;
+      channel4.updateARGBMode(modeVal); ARGBMemory.updateMemory(3, modeVal); break;
     case 5:
-      channel5.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(4, modeVal);
-      break;
+      channel5.updateARGBMode(modeVal); ARGBMemory.updateMemory(4, modeVal); break;
     case 6:
-      channel6.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(5, modeVal);
-      break;
+      channel6.updateARGBMode(modeVal); ARGBMemory.updateMemory(5, modeVal); break;
     case 7:
-      channel7.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(6, modeVal);
-      break;
+      channel7.updateARGBMode(modeVal); ARGBMemory.updateMemory(6, modeVal); break;
     case 8:
-      channel8.updateARGBMode(modeVal);
-      ARGBMemory.updateMemory(7, modeVal);
-      break;
+      channel8.updateARGBMode(modeVal); ARGBMemory.updateMemory(7, modeVal); break;
+  }
+}
+
+void getCurrentModeForChannel() {
+  switch (currentChannel) {
+    case 1:
+      currentMode = channel1.getARGBMode(); break;
+    case 2:
+      currentMode = channel2.getARGBMode(); break;
+    case 3:
+      currentMode = channel3.getARGBMode(); break;
+    case 4:
+      currentMode = channel4.getARGBMode(); break;
+    case 5:
+      currentMode = channel5.getARGBMode(); break;
+    case 6:
+      currentMode = channel6.getARGBMode(); break;
+    case 7:
+      currentMode = channel7.getARGBMode(); break;
+    case 8:
+      currentMode = channel8.getARGBMode(); break;
   }
 }
 
 void setCurrentChannel() {
-  bool channelVal_bit2 = digitalRead(channelVal_bit2_pin);
-  bool channelVal_bit1 = digitalRead(channelVal_bit1_pin);
-  bool channelVal_bit0 = digitalRead(channelVal_bit0_pin);
-  currentChannel = 4*channelVal_bit2 + 2*channelVal_bit1 + channelVal_bit0 + 1;
+  if (digitalRead(channelModeChangeFlag_pin) == HIGH) {
+    bool channelVal_bit2 = digitalRead(channelVal_bit2_pin);
+    bool channelVal_bit1 = digitalRead(channelVal_bit1_pin);
+    bool channelVal_bit0 = digitalRead(channelVal_bit0_pin);
+    currentChannel = 4*channelVal_bit2 + 2*channelVal_bit1 + channelVal_bit0 + 1;
+    getCurrentModeForChannel();
+  }
 }
 
-uint8_t setCurrentMode() {
-  bool modeVal_bit3 = digitalRead(modeVal_bit3_pin);
-  bool modeVal_bit2 = digitalRead(modeVal_bit2_pin);
-  bool modeVal_bit1 = digitalRead(modeVal_bit1_pin);
-  bool modeVal_bit0 = digitalRead(modeVal_bit0_pin);
-  return 8*modeVal_bit3 + 4*modeVal_bit2 + 2*modeVal_bit1 + modeVal_bit0 + 1;
+void setCurrentMode() {
+  if (digitalRead(channelModeChangeFlag_pin) == HIGH) {
+    bool modeVal_bit3 = digitalRead(modeVal_bit3_pin);
+    bool modeVal_bit2 = digitalRead(modeVal_bit2_pin);
+    bool modeVal_bit1 = digitalRead(modeVal_bit1_pin);
+    bool modeVal_bit0 = digitalRead(modeVal_bit0_pin);
+    currentMode = 8*modeVal_bit3 + 4*modeVal_bit2 + 2*modeVal_bit1 + modeVal_bit0 + 1;
+    changeARGBMode(currentMode);
+  }
 }
 
 void setup() {
   initARGBChannels();
-  prevModeVal = 0;
+  currentChannel = 1;
+  getCurrentModeForChannel();
+  
   pinMode(channelVal_bit2_pin, INPUT); pinMode(channelVal_bit1_pin, INPUT); pinMode(channelVal_bit0_pin, INPUT); 
   pinMode(modeVal_bit3_pin, INPUT); pinMode(modeVal_bit2_pin, INPUT); pinMode(modeVal_bit1_pin, INPUT); pinMode(modeVal_bit0_pin, INPUT); 
+  pinMode(channelModeChangeFlag_pin, INPUT);
 }
 
 void loop() {
   //check for argb channel and mode changes
   setCurrentChannel();
-  uint8_t newModeVal = setCurrentMode();
-
-  if (newModeVal != prevModeVal) {
-    changeARGBMode(newModeVal);
-    prevModeVal = newModeVal;
-  }
+  setCurrentMode();
 
   //run all argb modes passing the IR receiver idle state param, with their respective timers inside
   //when IR receiver is not idle, don't strip.show() for all channels
