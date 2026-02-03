@@ -22,7 +22,11 @@ ARGBControllerMem ARGBMemory;
 PushButton argbButton(argb_button_pin);
 ChannelsLEDs channelLEDs(channelLED_shclk_pin, channelLED_stclk_pin, channelLED_data_pin);
 
-uint8_t currentChannel = 1;
+/*
+ * channel and mode numbers in MCU 2 start from 0
+ * channel and mode numbers in MCU 1 start from 1
+ */
+uint8_t currentChannel = 0;
 uint8_t channelModes[numberOfChannels] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 byte createSerialByte(uint8_t channel, uint8_t mode) {
@@ -33,9 +37,9 @@ void initARGBValues() {
   ARGBControllerMem::ARGBInitValues initValues = ARGBMemory.begin();
   digitalWrite(serialTxFlag_pin, HIGH);
   
-  for (uint8_t i; i < numberOfChannels; i++) {
-    channelModes[i] = initValues.modeValues[i];
-    softSerial.sendByte( createSerialByte(i+1, channelModes[i]) );
+  for (uint8_t c; c < numberOfChannels; c++) {
+    channelModes[c] = initValues.modeValues[c];
+    softSerial.sendByte( createSerialByte(c, channelModes[c]) );
   }
   
   digitalWrite(serialTxFlag_pin, LOW);
@@ -56,20 +60,20 @@ void loop() {
 
   if (be == PushButton::shortPressed) { 
     //short button press to move to next mode
-    channelModes[currentChannel - 1] += 1;
-    ARGBMemory.updateMemory(currentChannel - 1, channelModes[currentChannel - 1]);
+    channelModes[currentChannel] += 1;
+    if (channelModes[currentChannel] == numberOfModes) { 
+      channelModes[currentChannel] = 0; 
+    }
+    
+    ARGBMemory.updateMemory(currentChannel, channelModes[currentChannel]);
     
     digitalWrite(serialTxFlag_pin, HIGH);
-    softSerial.sendByte( createSerialByte(currentChannel, channelModes[currentChannel - 1]) );
+    softSerial.sendByte( createSerialByte(currentChannel, channelModes[currentChannel]) );
     digitalWrite(serialTxFlag_pin, LOW);
-    
-    if (channelModes[currentChannel - 1] > numberOfModes) { 
-      channelModes[currentChannel - 1] = 1; 
-    }
   }
   else if (be == PushButton::middlePressed) { 
     //middle button press to move to next channel
     currentChannel ++;
-    if (currentChannel > numberOfChannels) { currentChannel = 1; }
+    if (currentChannel == numberOfChannels) { currentChannel = 0; }
   }
 }

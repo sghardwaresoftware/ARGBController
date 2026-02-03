@@ -34,7 +34,7 @@ public:
       byte value = EEPROM.read(modeValAddr);
       
       if (value == defaultAddrValue) {
-        initValues.modeValues[modeValAddr - firstModeValueAddr] = 1; //value at this address is default, so set mode to default 1 
+        initValues.modeValues[modeValAddr - firstModeValueAddr] = 0; //value at this address is default, so set to 0 (first mode) 
       }
       else {
         initValues.modeValues[modeValAddr - firstModeValueAddr] = value; //value is previously stored at this address, so set the corresponding mode

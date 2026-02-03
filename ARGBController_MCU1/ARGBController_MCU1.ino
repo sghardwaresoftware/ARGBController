@@ -68,8 +68,12 @@ void loop() {
   if (digitalRead(serialRxFlag_pin) == HIGH) {
     byte receivedByte = softSerial.receiveByte();
     if (receivedByte != 0xFF) {
-      uint8_t channel = receivedByte >> 4;
-      uint8_t mode = receivedByte & 0x0F;
+      /*
+       * channel and mode numbers in MCU 1 start from 1
+       * channel and mode numbers in MCU 2 start from 0
+       */
+      uint8_t channel = (receivedByte >> 4) + 1;
+      uint8_t mode = (receivedByte & 0x0F) + 1;
       changeARGBMode(channel, mode);
     }
   }
