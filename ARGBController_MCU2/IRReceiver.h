@@ -7,41 +7,36 @@
 #define DECODE_NEC
 #include <IRremote.hpp>
 
+#define minReceiveInterval 1250 //minimum ms in between each ir receive
+
 class IRReceiver {
 private:
   int IRReceiverPin;
-public:
-  struct IRReceiverState {
-    bool receivedSignal = false;
-    bool repeatedSignal = false;
-    decode_type_t protocol = 0;
-    uint16_t command = 0;
-    IRRawDataType rawData = 0;
-  };
+  unsigned long prevReceivedTime = 0;
   
+public:
   IRReceiver(int IRReceiverPin) : IRReceiverPin(IRReceiverPin) {}
   
   void begin() {
      IrReceiver.begin(IRReceiverPin, DISABLE_LED_FEEDBACK);
+     delay(100); 
+     IrReceiver.resume();
   }
   
-  IRReceiverState listenIRReceiver() {
-    IRReceiverState irs;
+  uint16_t listenIRReceiver() {
+    uint16_t command = 0xFFFF;
     
-    if (IrReceiver.decode() && !IrReceiver.decodedIRData.protocol == UNKNOWN) {
-      irs.receivedSignal = true;
-      irs.protocol = IrReceiver.decodedIRData.protocol;
-      irs.command = IrReceiver.decodedIRData.command;
-      irs.rawData = IrReceiver.decodedIRData.decodedRawData;
+    if (IrReceiver.decode()) {
+      unsigned long receivedTime = millis();
       
-      if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT) {
-          irs.repeatedSignal = true;
+      if (receivedTime - prevReceivedTime >= minReceiveInterval) {
+        prevReceivedTime = receivedTime;
+        command = IrReceiver.decodedIRData.command;
       }
-
+      
       IrReceiver.resume();
     }
-
-    return irs;
+    return command;
   }
 
   bool isIdle() {
