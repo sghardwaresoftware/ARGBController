@@ -1,15 +1,18 @@
 #include "./ARGBChannel.h"
 #include "./SoftSerialBytes.h"
 
-#define serialRxFlag_pin A0
-#define ARGBChannel1_pin 2
-#define ARGBChannel2_pin 3
-#define ARGBChannel3_pin 4
-#define ARGBChannel4_pin 5
-#define ARGBChannel5_pin A1
-#define ARGBChannel6_pin A2
-#define ARGBChannel7_pin A3
-#define ARGBChannel8_pin A4
+/*
+ * softSerial uses pins 8 (RX) and 9 (TX)
+ */
+#define serialRxFlag_pin 10
+#define ARGBChannel1_pin A0
+#define ARGBChannel2_pin A1
+#define ARGBChannel3_pin A2
+#define ARGBChannel4_pin A3
+#define ARGBChannel5_pin A4
+#define ARGBChannel6_pin A5
+#define ARGBChannel7_pin 2
+#define ARGBChannel8_pin 3
 #define ARGBLedCount 15
 #define ARGBBrightness 192
 
