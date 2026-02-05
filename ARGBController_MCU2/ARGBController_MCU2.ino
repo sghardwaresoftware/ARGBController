@@ -9,7 +9,6 @@
 #define numberOfChannels 8
 #define numberOfModes 16
 
-#define serialTxFlag_pin A0
 /*
  * shift register to send out bits for channel active indicator
  * only one of the 8 bits is '1' to indicate that channel is active
@@ -20,6 +19,11 @@
 
 #define argb_button_pin 5
 #define irReceiver_pin 6
+
+/*
+ * softSerial uses pins 8 (RX) and 9 (TX)
+ */
+#define serialTxFlag_pin 10
 
 IRReceiver irReceiver(irReceiver_pin);
 SoftSerialBytes softSerial(9600);
@@ -62,11 +66,13 @@ void updateToARGBChannel() {
 void nextARGBChannel() {
   currentChannel += 1;
   if (currentChannel == numberOfChannels) { currentChannel = 0; }
+  channelLEDs.updateChannelsLEDs(currentChannel);
 }
 
 void prevARGBChannel() {
   currentChannel -= 1;
   if (currentChannel == 255) { currentChannel = 7; } // 0-1 in unsigned 8 bit overflows to 255
+  channelLEDs.updateChannelsLEDs(currentChannel);
 }
 
 void nextARGBMode() {
