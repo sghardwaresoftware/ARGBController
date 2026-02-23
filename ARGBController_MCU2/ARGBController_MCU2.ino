@@ -1,151 +1,109 @@
-#include "./PushButton.h"
-#include "./ChannelsLEDs.h"
-#include "./ARGBControllerMem.h"
-#include "./IRReceiver.h"
-#include "./IRReceiverButtons.h"
-#include "./SoftSerialBytes.h"
-
-#define MCU_initDelay 1500
-#define numberOfChannels 8
-#define numberOfModes 16
-
 /*
- * shift register to send out bits for channel active indicator
- * only one of the 8 bits is '1' to indicate that channel is active
- */  
-#define channelLED_shclk_pin 2
-#define channelLED_stclk_pin 3
-#define channelLED_data_pin 4
+ * Created by SGHardwareSoftware, Feb 2026
+ * 
+ * Arduino sketch for ARGBController MCU 2 (Slave)
+ * It handles the 8 ARGB channel ARGB light modes via NeoPixel 
+ * Uses "ARGBChannel.h" class as a wrapper for NeoPixel, while packaging 16 pre-programmed ARGB modes
+ * interacts with MCU 1 (main) by receiving a 8-bit value (4 bit channel, 4 bit mode) over softserial
+ * 
+ * compiled for 8-bit AVR ATmega MCUs i.e. ATmega168, ATmega328
+ * tested working with or without 16MHz ext. crystal
+ * NOTE: to run without crystal (int. 8MHz oscillator), set low fuse E2, high fuse D7 and extended fuse FD on AVRDUDE
+ * and compile this sketch with internal 8 MHz setting (using MiniCore board)
+ */
 
-#define argb_button_pin 5
-#define irReceiver_pin 6
+#include "./ARGBChannel.h"
+#include "./SoftSerialBytes.h"
 
 /*
  * softSerial uses pins 8 (RX) and 9 (TX)
  */
-#define serialTxFlag_pin 10
+#define serialRxFlag_pin 10
+#define ARGBChannel1_pin A0
+#define ARGBChannel2_pin A1
+#define ARGBChannel3_pin A2
+#define ARGBChannel4_pin A3
+#define ARGBChannel5_pin A4
+#define ARGBChannel6_pin A5
+#define ARGBChannel7_pin 2
+#define ARGBChannel8_pin 3
+#define ARGBLedCount 15
+#define ARGBBrightness 192
 
-IRReceiver irReceiver(irReceiver_pin);
 SoftSerialBytes softSerial(9600);
-ARGBControllerMem ARGBMemory;
-PushButton argbButton(argb_button_pin);
-ChannelsLEDs channelLEDs(channelLED_shclk_pin, channelLED_stclk_pin, channelLED_data_pin);
+ARGBChannel channel1(ARGBChannel1_pin, ARGBLedCount);
+ARGBChannel channel2(ARGBChannel2_pin, ARGBLedCount);
+ARGBChannel channel3(ARGBChannel3_pin, ARGBLedCount);
+ARGBChannel channel4(ARGBChannel4_pin, ARGBLedCount);
+ARGBChannel channel5(ARGBChannel5_pin, ARGBLedCount);
+ARGBChannel channel6(ARGBChannel6_pin, ARGBLedCount);
+ARGBChannel channel7(ARGBChannel7_pin, ARGBLedCount);
+ARGBChannel channel8(ARGBChannel8_pin, ARGBLedCount);
 
-/*
- * channel and mode numbers in MCU 2 start from 0
- * channel and mode numbers in MCU 1 start from 1
- */
-uint8_t currentChannel = 0;
-uint8_t channelModes[numberOfChannels] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-byte createSerialByte(uint8_t channel, uint8_t mode) {
-  return (channel << 4) | mode;
+void initARGBChannels() {
+  //initalize all channel with default mode 1
+  
+  channel1.begin(1, 75, ARGBBrightness);
+  channel2.begin(1, 75, ARGBBrightness);
+  channel3.begin(1, 75, ARGBBrightness);
+  channel4.begin(1, 75, ARGBBrightness);
+  channel5.begin(1, 75, ARGBBrightness);
+  channel6.begin(1, 75, ARGBBrightness);
+  channel7.begin(1, 75, ARGBBrightness);
+  channel8.begin(1, 75, ARGBBrightness);
 }
 
-void initARGBValues() {
-  ARGBControllerMem::ARGBInitValues initValues = ARGBMemory.begin();
-  digitalWrite(serialTxFlag_pin, HIGH);
-  
-  for (uint8_t c; c < numberOfChannels; c++) {
-    channelModes[c] = initValues.modeValues[c];
-    softSerial.sendByte( createSerialByte(c, channelModes[c]) );
+void changeARGBMode(uint8_t channelVal, uint8_t modeVal) { 
+  switch (channelVal) {
+    case 1:
+      channel1.updateARGBMode(modeVal); break;
+    case 2:
+      channel2.updateARGBMode(modeVal); break;
+    case 3:
+      channel3.updateARGBMode(modeVal); break;
+    case 4:
+      channel4.updateARGBMode(modeVal); break;
+    case 5:
+      channel5.updateARGBMode(modeVal); break;
+    case 6:
+      channel6.updateARGBMode(modeVal); break;
+    case 7:
+      channel7.updateARGBMode(modeVal); break;
+    case 8:
+      channel8.updateARGBMode(modeVal); break;
   }
-  
-  digitalWrite(serialTxFlag_pin, LOW);
-}
-
-void updateToARGBChannel() {
-  Serial.print("Channel: "); Serial.print(currentChannel); 
-  Serial.print("; Mode: "); Serial.println(channelModes[currentChannel], HEX);
-  
-  digitalWrite(serialTxFlag_pin, HIGH);
-  softSerial.sendByte( createSerialByte(currentChannel, channelModes[currentChannel]) );
-  digitalWrite(serialTxFlag_pin, LOW);
-}
-
-void nextARGBChannel() {
-  currentChannel += 1;
-  if (currentChannel == numberOfChannels) { currentChannel = 0; }
-  channelLEDs.updateChannelsLEDs(currentChannel);
-}
-
-void prevARGBChannel() {
-  currentChannel -= 1;
-  if (currentChannel == 255) { currentChannel = 7; } // 0-1 in unsigned 8 bit overflows to 255
-  channelLEDs.updateChannelsLEDs(currentChannel);
-}
-
-void nextARGBMode() {
-  channelModes[currentChannel] += 1;
-  if (channelModes[currentChannel] == numberOfModes) { 
-    channelModes[currentChannel] = 0; 
-  }
-  
-  ARGBMemory.updateMemory(currentChannel, channelModes[currentChannel]);
-  updateToARGBChannel();
-}
-
-void prevARGBMode() {
-  channelModes[currentChannel] -= 1;
-  if (channelModes[currentChannel] == 255) { // 0-1 in unsigned 8 bit overflows to 255 
-    channelModes[currentChannel] = 15; 
-  }
-
-  ARGBMemory.updateMemory(currentChannel, channelModes[currentChannel]);
-  updateToARGBChannel();
-}
-
-void jumpToARGBMode(uint8_t newMode) {
-  channelModes[currentChannel] = newMode;
-  ARGBMemory.updateMemory(currentChannel, channelModes[currentChannel]);
-  updateToARGBChannel();
 }
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(serialTxFlag_pin, OUTPUT); digitalWrite(serialTxFlag_pin, LOW);
-  argbButton.begin();
-  channelLEDs.begin(currentChannel);
-  irReceiver.begin();
+  pinMode(serialRxFlag_pin, INPUT);
+  initARGBChannels();
   softSerial.begin();
-  delay(MCU_initDelay);
-  initARGBValues();
 }
 
 void loop() {
-  //read argb button for short press (change mode), middle press (change channel)
-  PushButton::ButtonEvent be = argbButton.listenButton(); 
-  uint16_t irReceiverCommand = irReceiver.listenIRReceiver();
-
-  if (be == PushButton::shortPressed) { 
-    //short button press to move to next mode
-    nextARGBMode();
+  //check for argb channel and mode changes
+  if (digitalRead(serialRxFlag_pin) == HIGH) {
+    byte receivedByte = softSerial.receiveByte();
+    if (receivedByte != 0xFF) {
+      /*
+       * channel and mode numbers in MCU 1 start from 1
+       * channel and mode numbers in MCU 2 start from 0
+       */
+      uint8_t channel = (receivedByte >> 4) + 1;
+      uint8_t mode = (receivedByte & 0x0F) + 1;
+      changeARGBMode(channel, mode);
+    }
   }
-  else if (be == PushButton::middlePressed) { 
-    //middle button press to move to next channel
-    nextARGBChannel();
-  }
-
-  if (irReceiverCommand != 0xFFFF) {
-    /*
-     * IR command received; process each command.
-     * IR remote button and command mappings are in IRReceiverButtons.h
-     */
-    //Serial.println(irReceiverCommand);
-    if (irReceiverCommand == CH_MINUS_BTN) { prevARGBChannel(); }
-    else if (irReceiverCommand == CH_PLUS_BTN) { nextARGBChannel(); }
-    else if (irReceiverCommand == PREV_BTN) { prevARGBMode(); }
-    else if (irReceiverCommand == NEXT_BTN) { nextARGBMode(); }
-
-    else if (irReceiverCommand == NO_0_BTN) { jumpToARGBMode(5); }
-    else if (irReceiverCommand == NO_1_BTN) { jumpToARGBMode(0); }
-    else if (irReceiverCommand == NO_2_BTN) { jumpToARGBMode(3); }
-    else if (irReceiverCommand == NO_3_BTN) { jumpToARGBMode(4); }
-    else if (irReceiverCommand == NO_4_BTN) { jumpToARGBMode(7); }
-    else if (irReceiverCommand == NO_5_BTN) { jumpToARGBMode(9); }
-    else if (irReceiverCommand == NO_6_BTN) { jumpToARGBMode(11); }
-    else if (irReceiverCommand == NO_7_BTN) { jumpToARGBMode(13); }
-    else if (irReceiverCommand == NO_8_BTN) { jumpToARGBMode(14); }
-    else if (irReceiverCommand == NO_9_BTN) { jumpToARGBMode(15); }
+  else {
+    //run all argb modes passing the IR receiver idle state param, with their respective timers inside
+    //when IR receiver is not idle, don't strip.show() for all channels
+    channel1.runARGBMode();
+    channel2.runARGBMode();
+    channel3.runARGBMode();
+    channel4.runARGBMode();
+    channel5.runARGBMode();
+    channel6.runARGBMode();
+    channel7.runARGBMode();
+    channel8.runARGBMode();
   }
 }

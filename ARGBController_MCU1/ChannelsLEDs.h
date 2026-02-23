@@ -19,14 +19,14 @@ public:
 
     //turn on LED of the initalized channel at the beginning
     digitalWrite(stClkPin, LOW);
-    shiftOut(dataPin, shClkPin, MSBFIRST, 1 << (initChannel - 1));
+    shiftOut(dataPin, shClkPin, MSBFIRST, 1 << initChannel);
     digitalWrite(stClkPin, HIGH);
   }
 
   void updateChannelsLEDs(uint8_t currentChannel) {
     //turn on LED of the updated channel 
     digitalWrite(stClkPin, LOW);
-    shiftOut(dataPin, shClkPin, MSBFIRST, 1 << (currentChannel - 1));
+    shiftOut(dataPin, shClkPin, MSBFIRST, 1 << currentChannel);
     digitalWrite(stClkPin, HIGH);
   }
   
